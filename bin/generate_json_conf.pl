@@ -8,15 +8,16 @@ use JSON;
 my $conf = {
     todo_file_to_append_to => "$ENV{HOME}/documents/todo/aa_email_todo.txt",
     gmail_email_address    => 'your-email@gmail.com',
-    gmail_password         => 'your-password', # and this is why the $confdir needs TIGHT permissions to restrict access, and also why you'd want a separate email account for this.
+    gmail_password         => 'your-password', # and this is why the $confdir needs TIGHT permissions to restrict access, and also why you'd want a separate email account for this. If this is empty string or "ask" then the get_gmail_todo.py will prompt for the password.
     subject_prefix         => "TODOHOME",
+    delete_messages        => "ask", # can only be either "ask", "yes" or "no" , as in what the script does with messages that get appended to the todo_file_to_append_to
 };
 
 my $json = JSON->new->allow_nonref;
 
 my $confdir  = "$ENV{HOME}/.khaostodo/";
 
-if ( -d $confdir ) {
+if ( ! -d $confdir ) {
     system("mkdir -p $confdir");
 }
 
