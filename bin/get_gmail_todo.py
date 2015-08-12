@@ -53,6 +53,14 @@ subject_prefix        = conf_json['subject_prefix']
 
 # TODO the conf is going to need a list of "approved sender" email address. So that you can avoid having your todo list being spammed.
 
+def extract_text_plain(msg) :
+    if ( msg.is_multipart()):
+        for part in msg.walk():
+            if part.get_content_type() == 'text/plain':
+                return part.get_payload()
+    else :
+        return msg.get_payload()
+
 def process_mailbox(M):
     rv, data = M.search(None, "ALL")
     if rv != 'OK':
@@ -81,12 +89,13 @@ def process_mailbox(M):
                       email.utils.mktime_tz(date_tuple))
                 prtdate = local_date.strftime("%a, %d %b %Y %H:%M:%S")
 
+
             with open(todo_file_to_append_to, "a") as myfile:
               myfile.write(
                     "\n####################\n"
                     + prtdate + "\n"
                     + msg['Subject']
-                    + msg.get_payload()
+                    + "\n" + extract_text_plain(msg)
                 )
             M.store(num, '+FLAGS', '\\Deleted')
         else :
