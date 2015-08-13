@@ -49,18 +49,24 @@ confdir  = os.environ['HOME'] + '/.khaostodo/'
 with open(confdir + "gmail-todo.json", 'r' ) as data_file:
   conf_json = json.load(data_file)
 
-todo_file_to_append_to= conf_json['todo_file_to_append_to']
-gmail_email_address   = conf_json['gmail_email_address']
-gmail_password        = conf_json['gmail_password'] # if this is empty-string or "ask" a prompt will come up and ask the gmail password.
-subject_prefix        = conf_json['subject_prefix']
-delete_messages       = conf_json['delete_messages'].lower() # can only be either "ask", "yes" or "no" , as in what the script does with messages that get appended to the todo_file_to_append_to
+try :
+
+    todo_file_to_append_to= conf_json['todo_file_to_append_to']
+    gmail_email_address   = conf_json['gmail_email_address']
+    gmail_password        = conf_json['gmail_password'] # if this is empty-string or "ask" a prompt will come up and ask the gmail password.
+    subject_prefix        = conf_json['subject_prefix']
+    delete_messages       = conf_json['delete_messages'].lower() # can only be either "ask", "yes" or "no" , as in what the script does with messages that get appended to the todo_file_to_append_to
+except KeyError as e:
+    print "config file missing " , e
+    raw_input ( "Press return/enter key to finish" )
+    sys.exit()
 
 # TODO TODO prompt_finish_return  = conf_json['prompt_finish_return'].lower() # "yes" or "no" saying whether when this script terminates it ask for you to press enter. This is so it can be kicked off by a "launcher" that opens in a terminal window and you can see the results.
 
 if ( not gmail_password or gmail_password.lower() == "ask") :
     gmail_password = getpass.getpass("Input the gmail password for %s : " % gmail_email_address )
 
-if (delete_messages == 'ask') :
+if (delete_messages == 'ask' or delete_messages == '' ) :
     delete_messages = raw_input ( "Do you want to delete TODOs emails (in the mailbox) that get appended to the file ( yes/no OR y/n ) ? " )
 
 if delete_messages == 'y' :
@@ -113,7 +119,7 @@ def process_mailbox(M):
         # TODO make sure the todo is only coming from approved sender emails . i.e. mine.
         # I don't want people to be able to spam my todo gmail account.
 
-        if re.match( r'%s' % subject_prefix  , msg['Subject'] , re.IGNORECASE ) :
+        if re.match( r'\s*%s' % subject_prefix  , msg['Subject'] , re.IGNORECASE ) :
             print "Appending to %s " % todo_file_to_append_to
 
             with open(todo_file_to_append_to, "a") as myfile:
