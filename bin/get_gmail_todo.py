@@ -12,73 +12,95 @@ import getpass
 
 
 """
- This script is for getting email "todo" notes , sent usually by yourself, to a gmail account that you have setup for the purpose. This gmail account needs to allow IMAP ( by default this isn't enable ). 
+The Reason for this script
+##########################
+I like doing my todo notes in a text editor.
 
-You also need to have Google's extra security switched off. ( I haven't worked out how to do Google's new security protocol yet ). To switch of google extra security see https://support.google.com/accounts/answer/6010255?hl=en
+So this script is for getting email "TODO" notes, usually sent by yourself, possibly to a gmail account that you have setup for the purpose and appending them to a file defined in the JSON config.
 
-You probably wouldn't want to use your main email account, primarily because the password to the account is stored in a (hopefully) protected config file ( and you can't currently use the new security methods with this script, as mentioned above )
+These TODO emails have the "Subject" prefixed with something like "TODOHOME" or "TODOWORK". This prefix is defined in the JSON config.
 
-You can if you wish get this script to prompt for the password, with either an empty password or putting "ask" in the password field.
-
- So this script gets TODO emails that have the "Subject" prefixed with something like "TODOHOME" or "TODOWORK". ( Only one prefix config currently allowed, and for the way I work I don't see any benefit to having more )
-These emails are then appended to a file somewhere, this file you edit in a text editor.
-I process my todo file lists in text editor.
-
-This script saves me from having to have an email client open. I just run it from a launcher shortcut on my gnome desktop ( using the "Application in Terminal" type ) and get the emails I've sent myself dumped in a text file. Magic !
+So this script saves me from having an email client open, and copy-and-pasting. I just run it from a launcher shortcut on my gnome desktop ( using the "Application in Terminal" type ) and get the emails I've sent myself dumped in a text file, ready for my text editor. ( you really need the files being appended to have been saved before you run this script, otherwise you will get in a bit of a mess when the editor says something else has editted your unsaved file )
 
 So when I'm at work I can send an email with the Subject prefix of TODOHOME. My home machine is configured just to look for these . At work it is vice-versa.
 
-If a message is multipart this script attempts to extra the text/plain part as the message body. 
 
-Most of this code was blagged from http://www.voidynullness.net/blog/2013/07/25/gmail-email-with-python-via-imap/ . Thanks ! 
+Google Settings
+###############
+This gmail account needs to allow IMAP ( by default this isn't enable ). See gmail help on the web.
+ 
+You also need to have Google's extra security switched off. ( I haven't worked out how to do Google's new security protocol yet ). To switch of google extra security see https://support.google.com/accounts/answer/6010255?hl=en
 
-Some of it was by me "Kaptain Khaos"
 
-There is a perl script that will dump out an example config ( yeah I'll write this in python too )
+Password
+########
+You can if you wish get this script to prompt for the password by either not defining it in the json config or having it defined as an empty-string.
 
-You really need to make the file permission to this directory very strict
+If you do have the password in your config, then for your security you might want to create a gmail account just for your todo notes. Also you then really need to make the file permission to this directory very strict
  i.e chmod 700 /home/yourhome/.khaostodo/
 
 If you use the bin/generate_json_conf.pl to generate a template conf,
- then that does change the directory permission to be restrictive.
+ then that does change the config directory permissions to be restrictive.
+
+
+Other things.
+#############
+If a message is multipart this script attempts to extra the text/plain part as the message body.
+
+There is a perl script that will dump out an example config ( yeah I'll write this in python too )
+
+I am sure you could adapt this script for other mail providers. Gmail works for me :)
+
+A lot of the code here was copied (blagged!) from http://www.voidynullness.net/blog/2013/07/25/gmail-email-with-python-via-imap/ . Thanks !
+
+Some of it was by me "Kaptain Khaos"
 
 """
 
-confdir  = os.environ['HOME'] + '/.khaostodo/'
+conf={}
 
-with open(confdir + "gmail-todo.json", 'r' ) as data_file:
-  conf_json = json.load(data_file)
-
-try :
-
-    todo_file_to_append_to= conf_json['todo_file_to_append_to']
-    gmail_email_address   = conf_json['gmail_email_address']
-    gmail_password        = conf_json['gmail_password'] # if this is empty-string or "ask" a prompt will come up and ask the gmail password.
-    subject_prefix        = conf_json['subject_prefix']
-    delete_messages       = conf_json['delete_messages'].lower() # can only be either "ask", "yes" or "no" , as in what the script does with messages that get appended to the todo_file_to_append_to
-except KeyError as e:
-    print "config file missing " , e
-    raw_input ( "Press return/enter key to finish" )
+def press_return_exit():
+    if ( conf['prompt_finish_return'] == 'y' ) :
+        raw_input ( "Press return/enter key to finish" )
     sys.exit()
 
-# TODO TODO prompt_finish_return  = conf_json['prompt_finish_return'].lower() # "yes" or "no" saying whether when this script terminates it ask for you to press enter. This is so it can be kicked off by a "launcher" that opens in a terminal window and you can see the results.
+def get_config() :
+    global conf
 
-if ( not gmail_password or gmail_password.lower() == "ask") :
-    gmail_password = getpass.getpass("Input the gmail password for %s : " % gmail_email_address )
+    # getting the config.
+    confdir = os.environ['HOME'] + '/.khaostodo/'
+    with open(confdir + "gmail-todo.json", 'r' ) as data_file:
+      conf = json.load(data_file)
 
-if (delete_messages == 'ask' or delete_messages == '' ) :
-    delete_messages = raw_input ( "Do you want to delete TODOs emails (in the mailbox) that get appended to the file ( yes/no OR y/n ) ? " )
+    conf['prompt_finish_return'] = conf.get('prompt_finish_return','Y').lower()
 
-if delete_messages == 'y' :
-    delete_messages ='yes'
+    conf['gmail_password']       = conf.get('gmail_password','')
+    if ( not conf['gmail_password'] ) :
+        conf['gmail_password'] = getpass.getpass("Input the gmail password for %s : " % conf['gmail_email_address'] )
 
-if delete_messages == 'n' :
-    delete_messages ='no'
+    try :
+        conf['gmail_email_address']    = conf['gmail_email_address']
+    except KeyError as e:
+        print "config file missing " , e
+        press_return_exit()
 
-if ( delete_messages != 'yes' and delete_messages != 'no' ) :
-    print "Invalid entry for delete_messages " + delete_messages
-    raw_input ( "Press return/enter key to finish" )
-    sys.exit()
+    # the dispatch config.
+    for pref in conf['dispatch'] :
+        if (conf['dispatch'][pref]['delete'] == 'ask' \
+            or conf['dispatch'][pref]['delete'] == '' ) :
+                conf['dispatch'][pref]['delete'] \
+                    = raw_input ( "For prefix %s Do you want to delete TODOs emails (in the mailbox) that get appended to the file ( yes/no OR y/n ) ? " % pref )
+
+        if conf['dispatch'][pref]['delete'] == 'y' :
+            conf['dispatch'][pref]['delete'] ='yes'
+
+        if conf['dispatch'][pref]['delete'] == 'n' :
+            conf['dispatch'][pref]['delete'] ='no'
+
+        if ( conf['dispatch'][pref]['delete'] != 'yes' \
+            and conf['dispatch'][pref]['delete'] != 'no' ) :
+                print "For prefix %s , invalid entry for delete_messages %s" % ( pref , conf['dispatch'][pref]['delete'] )
+                press_return_exit()
 
 # TODO the conf is going to need a list of "approved sender" email address. So that you can avoid having your todo list being spammed.
 
@@ -119,41 +141,45 @@ def process_mailbox(M):
         # TODO make sure the todo is only coming from approved sender emails . i.e. mine.
         # I don't want people to be able to spam my todo gmail account.
 
-        if re.match( r'\s*%s' % subject_prefix  , msg['Subject'] , re.IGNORECASE ) :
-            print "Appending to %s " % todo_file_to_append_to
+        for pref in conf['dispatch'] :
+            if re.match( r'\s*%s' % pref , msg['Subject'] , re.IGNORECASE ) :
+                print "Appending to %s " % conf['dispatch'][pref]['fileto']
 
-            with open(todo_file_to_append_to, "a") as myfile:
-              myfile.write(
-                    "\n####################"
-                    + "\n" + extract_date(msg)
-                    + "\n" + msg['Subject']
-                    + "\n" + extract_text_plain(msg)
-                )
-            if delete_messages == 'yes' :
-                M.store(num, '+FLAGS', '\\Deleted')
-        else :
-            print "NOT appending to %s " % todo_file_to_append_to
+                with open(conf['dispatch'][pref]['fileto'], "a") as myfile:
+                  myfile.write(
+                        "\n####################"
+                        + "\n" + extract_date(msg)
+                        + "\n" + msg['Subject']
+                        + "\n" + extract_text_plain(msg)
+                    )
+                if conf['dispatch'][pref]['delete'].lower() == 'y' or conf['dispatch'][pref]['delete'].lower() == 'yes':
+                    M.store(num, '+FLAGS', '\\Deleted')
+            else :
+                print "NOT appending to %s " % conf['dispatch'][pref]['fileto']
+    M.expunge()
 
-    if delete_messages == 'yes' :
-        M.expunge()
 
+
+def main () :
+    M = imaplib.IMAP4_SSL('imap.gmail.com')
+    try:
+        M.login(conf['gmail_email_address'], conf['gmail_password'])
+    except imaplib.IMAP4.error:
+        print "LOGIN FAILED!!! %s " % conf['gmail_email_address']
+        press_return_exit()
+
+    rv, data = M.select("INBOX")
+    if rv == 'OK':
+        print "Processing mailbox...\n"
+        process_mailbox(M)
+        M.close()
+    M.logout()
+
+    press_return_exit()
 
 #########################################
+# run it :
 
-M = imaplib.IMAP4_SSL('imap.gmail.com')
+get_config()
+main()
 
-try:
-    M.login(gmail_email_address, gmail_password)
-except imaplib.IMAP4.error:
-    print "LOGIN FAILED!!! "
-    raw_input ( "Press return/enter key to finish" )
-    sys.exit()
-
-rv, data = M.select("INBOX")
-if rv == 'OK':
-    print "Processing mailbox...\n"
-    process_mailbox(M)
-    M.close()
-M.logout()
-
-raw_input ( "Press return/enter key to finish" )

@@ -11,6 +11,13 @@ my $conf = {
     gmail_password         => 'your-password', # and this is why the $confdir needs TIGHT permissions to restrict access, and also why you'd want a separate email account for this. If this is empty string or "ask" then the get_gmail_todo.py will prompt for the password.
     subject_prefix         => "TODOHOME",
     delete_messages        => "ask", # can only be either "ask", "yes" or "no" , as in what the script does with messages that get appended to the todo_file_to_append_to
+    dispatch => {
+        "TODOHOME" => "$ENV{HOME}/documents/todo/aa_email_todohome.txt",
+        "TODOkarl" => "$ENV{HOME}/documents/todo/aa_email_todokarl.txt",
+        "TODOblah" => "$ENV{HOME}/documents/todo/aa_email_todoblah.txt",
+    }
+
+
 };
 
 my $json = JSON->new->allow_nonref;
