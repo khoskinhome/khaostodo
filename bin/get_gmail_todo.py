@@ -154,8 +154,8 @@ def process_mailbox(M):
                     )
                 if conf['dispatch'][pref]['delete'].lower() == 'y' or conf['dispatch'][pref]['delete'].lower() == 'yes':
                     M.store(num, '+FLAGS', '\\Deleted')
-            else :
-                print "NOT appending to %s " % conf['dispatch'][pref]['fileto']
+            #else :
+            #    print "NOT appending to %s " % conf['dispatch'][pref]['fileto']
     M.expunge()
 
 
